@@ -57,7 +57,7 @@ class Game{
     int sec;
     int prev_min;
     int prev_sec;
-
+    bool testf;
     ENetAddress address;
     ENetHost* server;
     ENetEvent event;
@@ -184,6 +184,44 @@ class Game{
         void play(){
             while(true){
                 inputs->update();
+                while (enet_host_service(server, &event, 0) > 0) {
+                    switch (event.type) {
+                        case ENET_EVENT_TYPE_CONNECT:
+                            printf("A new client connected from %x:%u.\n",  event.peer->address.host, event.peer->address.port);
+                            /* Store any relevant client information here. */
+                            //event.peer->data = "Client information";
+                            peer1 = event.peer;
+                            testf = true;
+                            break;
+
+                        case ENET_EVENT_TYPE_RECEIVE:
+                            // //printf("A packet of length %lu containing %s was received from %s on channel %u.\n",
+                            //         event.packet->dataLength,
+                            //         event.packet->data,
+                            //         event.peer->data,
+                            //         event.channelID);
+                            /* Clean up the packet now that we're done using it. */
+                            decode(event.packet);
+                            enet_packet_destroy (event.packet);
+                            break;
+
+                        case ENET_EVENT_TYPE_DISCONNECT:
+                            printf("%s disconnected.\n", event.peer->data);
+                            /* Reset the peer's client information. */
+                            event.peer->data = NULL;
+                            break;
+
+                        case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
+                            printf("%s disconnected due to timeout.\n", event.peer->data);
+                            /* Reset the peer's client information. */
+                            event.peer->data = NULL;
+                            break;
+
+                        case ENET_EVENT_TYPE_NONE:
+                            break;
+                    }
+                }
+
                 if(!exit_from_game()){
                     break;
                 }
@@ -261,8 +299,8 @@ void Game::draw_game(){
     p1->draw(renderer);
     p2->draw(renderer);
 
-    p1->move(renderer);
-    p2->move(renderer);
+    p1->move(renderer,peer1,testf);
+    p2->move(renderer,peer1,testf);
 
     Point p1_pos = {1185,5};
     Point p1_task_pos = {1186,17};
