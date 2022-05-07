@@ -138,7 +138,7 @@ SDL_Rect getRect(int val){
 
 bool isPath(int x,int y,int offset){
     bool ans = false;
-    if(maze[(y+offset)/8][(x+offset)/8] == path){
+    if(maze[y/8][x/8] == path && (maze[(y)/8][(x+offset)/8] == path||maze[(y+offset)/8][(x)/8] == path)){
         ans = true;
     }
     return ans;

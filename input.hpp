@@ -33,7 +33,7 @@ class Input{
             }
         }
 
-        void update(){
+        inline void update() noexcept {
             int player_num = 2;
             bool new_key[input_keys::count][player_num];
 
@@ -75,7 +75,7 @@ class Input{
             return edge_key[key_][player];
         }
 
-        bool get_press(int key_,int player){
+        bool get_press(int key_,int player) const {
             return press_key[key_][player];
         }
 };

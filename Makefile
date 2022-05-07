@@ -11,6 +11,7 @@ image :
 	./a.out;
 	
 main2:
-	g++ main2.cpp game.cpp -w -lSDL2 -lSDL2_image -lSDL2_ttf -o game.out
+	g++ main2.cpp -w -lSDL2 -lSDL2_image -lSDL2_ttf -o game.out;
+	./game.out
 clean :
 	rm *.out 
