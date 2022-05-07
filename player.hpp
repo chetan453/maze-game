@@ -136,4 +136,7 @@ class Player{
             draw(renderer);
 
         }
+
+        Point get_pos() {return pos;}
+        int get_type(){return type;}
 };

@@ -33,11 +33,11 @@ class Font{
                 cout<<"Fonts are not initialized "<<TTF_GetError()<<endl;
                 exit(EXIT_FAILURE);
             }
-            loadFonts("./Fonts/Pacifico.ttf",96,font_size::x96);
-            loadFonts("./Fonts/Pacifico.ttf",48,font_size::x48);
-            loadFonts("./Fonts/Pacifico.ttf",32,font_size::x32);
-            loadFonts("./Fonts/Pacifico.ttf",16,font_size::x16);
-            loadFonts("./Fonts/Pacifico.ttf",8,font_size::x8);
+            loadFonts("./Fonts/ShortBaby-Mg2w.ttf",96,font_size::x96);
+            loadFonts("./Fonts/ShortBaby-Mg2w.ttf",48,font_size::x48);
+            loadFonts("./Fonts/ShortBaby-Mg2w.ttf",32,font_size::x32);
+            loadFonts("./Fonts/ShortBaby-Mg2w.ttf",16,font_size::x16);
+            loadFonts("./Fonts/ShortBaby-Mg2w.ttf",12,font_size::x8);
         }
 
         TTF_Font* get(unsigned int index){

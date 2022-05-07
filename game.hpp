@@ -12,6 +12,7 @@
 #include "input.hpp"
 #include "player.hpp"
 #include "image.hpp"
+#include "task.hpp"
 // #include "maze.hpp"
 using namespace std;
 
@@ -33,6 +34,9 @@ class Game{
     unique_ptr<Player> p1;
     unique_ptr<Player> p2;
     unique_ptr<Image> images;
+
+    unique_ptr<Task> t1;
+    unique_ptr<Task> t2;
     int selected;
     int game_mode;
     //render text to screen
@@ -91,7 +95,7 @@ class Game{
         Game():
             gWindow(NULL),
             renderer(NULL),
-            _state(game_state::title),
+            _state(game_state::start),
             selected(0),
             game_mode(0)
         {
@@ -100,6 +104,9 @@ class Game{
             p1 = make_unique<Player>(renderer,images.get(),inputs.get(),player_type::p1);
             this_thread::sleep_for(chrono::nanoseconds(501));
             p2 = make_unique<Player>(renderer,images.get(),inputs.get(),player_type::p2);
+
+            t1 = make_unique<Task>(p1.get());
+            t2 = make_unique<Task>(p2.get());
 
         }
 
@@ -175,7 +182,7 @@ bool Game::init(){
 }
 
 void Game::text(string str,int size,Point &p,RGB color){
-    SDL_Color col_ = {color.r,color.g,color.b,0xFF};
+    SDL_Color col_ = {color.r,color.g,color.b,255};
     SDL_Surface* font_surface = TTF_RenderUTF8_Blended(fonts.get(size),str.c_str(),col_);
     SDL_Texture* font_texture = SDL_CreateTextureFromSurface(renderer,font_surface);
     SDL_Rect src = {0,0,font_surface->w,font_surface->h};
@@ -200,9 +207,7 @@ void Game::game_title(){
     switch(game_mode){
         case 0:{
             string title_text = "IIT Delhi World";
-
             text(title_text,font_size::x96,title_pos,RGB{0x11,0x7A,0x65});
-            
             switch(selected){
                 case 0:{
                     SDL_SetRenderDrawColor(renderer,0xE8,0xF8,0xF5,0x00);
@@ -346,6 +351,60 @@ void Game::game_play(){
 
     p1->move(renderer);
     p2->move(renderer);
+
+    Point p1_pos = {1185,5};
+    Point p1_task_pos = {1186,17};
+    Point p1_tast_completd_pos = {1186,32};
+
+    SDL_Rect tmp = {1180,0,100,50};
+    SDL_SetRenderDrawColor(renderer,0xFF,0xA5,0x00,0xFF);
+    SDL_RenderDrawRect(renderer,&tmp);
+
+    text("Player 1",font_size::x16,p1_pos,RGB{0xAB,0x23,0x00});
+    text(t1->get_task_text(),font_size::x8,p1_task_pos,RGB{0x22,0x45,0xAB});
+    text("Tast completed:" + to_string(t1->completed_size()),font_size::x8,p1_tast_completd_pos,RGB{0x22,0x45,0xAB});
+            
+    
+    Point p2_pos = {1185,55};
+    Point p2_task_pos = {1186,72};
+    Point p2_tast_completd_pos = {1186,85};
+
+    tmp = {1180,50,100,100};
+    SDL_SetRenderDrawColor(renderer,0xFF,0xA5,0x00,0xFF);
+    SDL_RenderDrawRect(renderer,&tmp);
+
+    text("Player 2",font_size::x16,p2_pos,RGB{0xAB,0x23,0x00});
+    text(t2->get_task_text(),font_size::x8,p2_task_pos,RGB{0x22,0x45,0xAB});
+    text("Tast completed:" + to_string(t2->completed_size()),font_size::x8,p2_tast_completd_pos,RGB{0x22,0x45,0xAB}); 
+
+    Point p1_dst = t1->get_dst();
+    Point p2_dst = t2->get_dst();
+
+    tmp = {p1_dst.x-4,p1_dst.y-4,8,8};
+    SDL_RenderFillRect(renderer,&tmp);
+
+    tmp = {p2_dst.x-4,p2_dst.y-4,8,8};
+    SDL_RenderFillRect(renderer,&tmp);
+
+
+    cout<<"dst "<<t1->get_dst().x<<" "<<t1->get_dst().y<<"player pos "<<p1->get_pos().x<<" "<<p1->get_pos().y<<endl;
+
+    if(t1->has_reached()){
+        cout<<"t1\n";
+        t1->task_completed();
+        t1->add_new_task();
+    }
+
+    cout<<"dst "<<t2->get_dst().x<<" "<<t2->get_dst().y<<"player pos "<<p2->get_pos().x<<" "<<p2->get_pos().y<<endl;
+    if(t2->has_reached()){
+        cout<<"t2\n";
+        t2->task_completed();
+        t2->add_new_task();
+    }
+
+
+
+
 }
 
 void Game::game_pause(){

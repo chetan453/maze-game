@@ -17,6 +17,8 @@ struct RGB{
     int b;
 };
 
+
+
 struct Point{
     int x;
     int y;
@@ -37,5 +39,14 @@ struct Point{
         void operator+=(struct Point &rhs){
             x+=rhs.x;
             y=rhs.y;
+        }
+};
+
+struct Task_data{
+    Point p;
+    string task_text;
+    public:
+        bool operator==(struct Task_data rhs){
+            return p == rhs.p;
         }
 };
