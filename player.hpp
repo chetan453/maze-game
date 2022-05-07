@@ -118,7 +118,39 @@ class Player{
             }
         }
 
-        inline void move(SDL_Renderer* renderer) noexcept {
+        void intToByte(int n, unsigned char* result) {
+
+            result[0] = n & 0x000000ff;
+            result[1] = (n & 0x0000ff00) >> 8;
+            result[2] = (n & 0x00ff0000) >> 16;
+            result[3] = (n & 0xff000000) >> 24; 
+        }
+
+
+        inline void move(SDL_Renderer* renderer,ENetPeer* peer1, const bool testf) noexcept {
+
+            unsigned char tobesent[10];
+            tobesent[9]='0';
+            if (inputs->get_press(input_keys::f,type)){
+            // if(power_up>0){
+            //     Mix_PlayChannel(se_type::siren, sound_manager_->get_se(se_type::siren),0);
+            //     tobesent[9]='1';
+            //     power_mode = 400;
+            //     power_up--;
+            // }
+            
+            }
+            tobesent[0]='P';
+            intToByte(pos.x,&tobesent[1]);
+            intToByte(pos.y,&tobesent[5]);
+            if(testf){
+                ENetPacket* packet = enet_packet_create (tobesent, 
+                                                10 ,0);
+                enet_peer_send (peer1, 0, packet);
+            }
+
+            // const Point dst_pos = {nxt_.x*block::size, nxt_.y*block::size};
+
             if((inputs->get_press(input_keys::up,type) || inputs->get_press(input_keys::w,type)) && isPath(pos.x,pos.y-speed,speed)){
                 pos.y-=speed;
             }else

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "enet.h"
 #include<iostream>
 #include<SDL2/SDL.h>
 #include<SDL2/SDL_image.h>
@@ -13,7 +14,8 @@
 #include "player.hpp"
 #include "image.hpp"
 #include "task.hpp"
-// #include "maze.hpp"
+#include<ctime>
+
 using namespace std;
 
 class Game{
@@ -48,8 +50,21 @@ class Game{
     void game_pause();
     void game_over();
 
+    time_t intiale;
+    time_t present;
+
+    int min;
+    int sec;
+    int prev_min;
+    int prev_sec;
+
+    ENetAddress address;
+    ENetHost* server;
+    ENetEvent event;
+    ENetPeer* peer1;
     bool init();
 
+    void draw_game();
     bool exit_from_game(){
         SDL_Event e;
         while(SDL_PollEvent(&e)){
@@ -83,6 +98,8 @@ class Game{
         pre_count = SDL_GetTicks();
     }
 
+
+
     void close(){
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(gWindow);
@@ -100,6 +117,19 @@ class Game{
             game_mode(0)
         {
             init();
+            address = {0};
+            address.host = ENET_HOST_ANY; /* Bind the server to the default localhost.     */
+            address.port = 8123; /* Bind the server to port 7777. */
+            server = enet_host_create(&address, 3, 2, 0, 0);
+            if (server == NULL) {
+                printf("An error occurred while trying to create an ENet server host.\n");
+                //return 1;
+            }
+            printf("Started a server...\n");
+            min = 0;
+            sec = 0;
+            prev_min = 0;
+            prev_sec = 0;
             inputs = make_unique<Input>();
             p1 = make_unique<Player>(renderer,images.get(),inputs.get(),player_type::p1);
             this_thread::sleep_for(chrono::nanoseconds(501));
@@ -108,6 +138,47 @@ class Game{
             t1 = make_unique<Task>(p1.get());
             t2 = make_unique<Task>(p2.get());
 
+        }
+
+        int byteToInt(unsigned char* byte) {
+
+            int n = 0;
+
+            n = n + (byte[0] & 0x000000ff);
+            n = n + ((byte[1] & 0x000000ff) << 8);
+            n = n + ((byte[2] & 0x000000ff) << 16);
+            n = n + ((byte[3] & 0x000000ff) << 24);
+
+
+            return n;
+        }
+
+        void intToByte(int n, unsigned char* result) {
+
+            result[0] = n & 0x000000ff;
+            result[1] = (n & 0x0000ff00) >> 8;
+            result[2] = (n & 0x00ff0000) >> 16;
+            result[3] = (n & 0xff000000) >> 24; 
+        }
+
+        inline void decode(ENetPacket* packet){
+            if(packet->data[0]=='P'){
+            // p2->set_pos((Point) {byteToInt(&packet->data[1]), byteToInt(&packet->data[5])}) ;
+            // if(packet->data[9]=='1'){
+            //     if(p2->power_up>0){
+            //         Mix_PlayChannel(se_type::siren, sound_manager_->get_se(se_type::siren),0);
+            //         //tobesent[9]='1';
+            //         // p1->power_mode = 400;
+            //         // p2->power_up--;
+            //         }
+            // }
+            }
+            else if(packet->data[0]=='B'){//pause
+                _state = game_state::pause;
+            }
+            else if(packet->data[0]=='N'){//playing
+                _state = game_state::play;
+            }
         }
 
         void play(){
@@ -145,6 +216,94 @@ class Game{
             close();
         }
 };
+
+void Game::draw_game(){
+    SDL_SetRenderDrawColor(renderer,0x00,0x00,0x00,0xFF);
+    SDL_RenderClear(renderer);
+    vector<SDL_Rect> pathVector,miscVector,groundVector;
+    SDL_Rect pathRect = {0,0,8,8};
+    SDL_Rect miscRect={0,0,8,8};
+    SDL_Rect groundRect={0,0,8,8};
+    for(int i=0;i<ROW;i++){
+        for(int j=0;j<COLUMN;j++){
+            if(maze[i][j] == path){
+                pathRect.x=j*8;
+                pathRect.y=i*8;                    
+                pathVector.push_back(pathRect);
+            }
+            if(maze[i][j] == miscellaneous){
+                    miscRect.x=j*8;
+                    miscRect.y=i*8;
+                    miscVector.push_back(miscRect);
+                }
+                if(maze[i][j] == ground){
+                    groundRect.x=j*8;
+                    groundRect.y=i*8;
+                    groundVector.push_back(groundRect);
+                }
+        }
+    }
+
+    for(int i=0;i<pathVector.size();i++){
+        SDL_SetRenderDrawColor(renderer,0xC6,0xC4,0x11,SDL_ALPHA_OPAQUE);
+        SDL_RenderFillRect(renderer,&pathVector[i]);
+    }
+
+    for(int i=0;i<miscVector.size();i++){
+        SDL_SetRenderDrawColor(renderer,0xFF,0xFF,0xFF,0xFF);
+        SDL_RenderFillRect(renderer,&miscVector[i]);
+    }
+
+    for(int i=0;i<groundVector.size();i++){
+        SDL_SetRenderDrawColor(renderer,0x0A,0x4B,0x0A,0xFF);
+        SDL_RenderFillRect(renderer,&groundVector[i]);
+    }
+    p1->draw(renderer);
+    p2->draw(renderer);
+
+    p1->move(renderer);
+    p2->move(renderer);
+
+    Point p1_pos = {1185,5};
+    Point p1_task_pos = {1186,17};
+    Point p1_tast_completd_pos = {1186,32};
+
+    SDL_Rect tmp = {1180,0,100,50};
+    SDL_SetRenderDrawColor(renderer,0xFF,0xA5,0x00,0xFF);
+    SDL_RenderDrawRect(renderer,&tmp);
+
+    text("Player 1",font_size::x16,p1_pos,RGB{0xAB,0x23,0x00});
+    text(t1->get_task_text(),font_size::x8,p1_task_pos,RGB{0x22,0x45,0xAB});
+    text("Task completed:" + to_string(t1->completed_size()),font_size::x8,p1_tast_completd_pos,RGB{0x22,0x45,0xAB});
+            
+    
+    Point p2_pos = {1185,55};
+    Point p2_task_pos = {1186,72};
+    Point p2_tast_completd_pos = {1186,85};
+
+    tmp = {1180,50,100,100};
+    SDL_SetRenderDrawColor(renderer,0xFF,0xA5,0x00,0xFF);
+    SDL_RenderDrawRect(renderer,&tmp);
+
+    text("Player 2",font_size::x16,p2_pos,RGB{0xAB,0x23,0x00});
+    text(t2->get_task_text(),font_size::x8,p2_task_pos,RGB{0x22,0x45,0xAB});
+    text("Task completed:" + to_string(t2->completed_size()),font_size::x8,p2_tast_completd_pos,RGB{0x22,0x45,0xAB}); 
+
+    Point p1_dst = t1->get_dst();
+    Point p2_dst = t2->get_dst();
+
+    tmp = {p1_dst.x-4,p1_dst.y-4,8,8};
+    SDL_RenderFillRect(renderer,&tmp);
+
+    tmp = {p2_dst.x-4,p2_dst.y-4,8,8};
+    SDL_RenderFillRect(renderer,&tmp);
+
+    tmp = {1180,185,100,100};
+    Point time_pos = {1180,185};
+    text(to_string(sec/60)+" : "+to_string(sec%60),font_size::x16,time_pos,RGB{0x22,0xFF,0xFF});
+    SDL_RenderDrawRect(renderer,&tmp);
+
+}
 
 bool Game::init(){
     bool success = true;
@@ -259,6 +418,7 @@ void Game::game_title(){
 }
 
 void Game::game_start(){
+    present = intiale = time(0);
     SDL_SetRenderDrawColor(renderer,0x00,0x00,0x00,0xFF);
     SDL_RenderClear(renderer);
     vector<SDL_Rect> pathVector,miscVector,groundVector;
@@ -306,109 +466,45 @@ void Game::game_start(){
 }
 
 void Game::game_play(){
-    SDL_SetRenderDrawColor(renderer,0x00,0x00,0x00,0xFF);
-    SDL_RenderClear(renderer);
-    vector<SDL_Rect> pathVector,miscVector,groundVector;
-    SDL_Rect pathRect = {0,0,8,8};
-    SDL_Rect miscRect={0,0,8,8};
-    SDL_Rect groundRect={0,0,8,8};
-    for(int i=0;i<ROW;i++){
-        for(int j=0;j<COLUMN;j++){
-            if(maze[i][j] == path){
-                pathRect.x=j*8;
-                pathRect.y=i*8;                    
-                pathVector.push_back(pathRect);
-            }
-            if(maze[i][j] == miscellaneous){
-                    miscRect.x=j*8;
-                    miscRect.y=i*8;
-                    miscVector.push_back(miscRect);
-                }
-                if(maze[i][j] == ground){
-                    groundRect.x=j*8;
-                    groundRect.y=i*8;
-                    groundVector.push_back(groundRect);
-                }
-        }
-    }
-
-    for(int i=0;i<pathVector.size();i++){
-        SDL_SetRenderDrawColor(renderer,0xC6,0xC4,0x11,SDL_ALPHA_OPAQUE);
-        SDL_RenderFillRect(renderer,&pathVector[i]);
-    }
-
-    for(int i=0;i<miscVector.size();i++){
-        SDL_SetRenderDrawColor(renderer,0xFF,0xFF,0xFF,0xFF);
-        SDL_RenderFillRect(renderer,&miscVector[i]);
-    }
-
-    for(int i=0;i<groundVector.size();i++){
-        SDL_SetRenderDrawColor(renderer,0x0A,0x4B,0x0A,0xFF);
-        SDL_RenderFillRect(renderer,&groundVector[i]);
-    }
-    p1->draw(renderer);
-    p2->draw(renderer);
-
-    p1->move(renderer);
-    p2->move(renderer);
-
-    Point p1_pos = {1185,5};
-    Point p1_task_pos = {1186,17};
-    Point p1_tast_completd_pos = {1186,32};
-
-    SDL_Rect tmp = {1180,0,100,50};
-    SDL_SetRenderDrawColor(renderer,0xFF,0xA5,0x00,0xFF);
-    SDL_RenderDrawRect(renderer,&tmp);
-
-    text("Player 1",font_size::x16,p1_pos,RGB{0xAB,0x23,0x00});
-    text(t1->get_task_text(),font_size::x8,p1_task_pos,RGB{0x22,0x45,0xAB});
-    text("Tast completed:" + to_string(t1->completed_size()),font_size::x8,p1_tast_completd_pos,RGB{0x22,0x45,0xAB});
-            
-    
-    Point p2_pos = {1185,55};
-    Point p2_task_pos = {1186,72};
-    Point p2_tast_completd_pos = {1186,85};
-
-    tmp = {1180,50,100,100};
-    SDL_SetRenderDrawColor(renderer,0xFF,0xA5,0x00,0xFF);
-    SDL_RenderDrawRect(renderer,&tmp);
-
-    text("Player 2",font_size::x16,p2_pos,RGB{0xAB,0x23,0x00});
-    text(t2->get_task_text(),font_size::x8,p2_task_pos,RGB{0x22,0x45,0xAB});
-    text("Tast completed:" + to_string(t2->completed_size()),font_size::x8,p2_tast_completd_pos,RGB{0x22,0x45,0xAB}); 
-
-    Point p1_dst = t1->get_dst();
-    Point p2_dst = t2->get_dst();
-
-    tmp = {p1_dst.x-4,p1_dst.y-4,8,8};
-    SDL_RenderFillRect(renderer,&tmp);
-
-    tmp = {p2_dst.x-4,p2_dst.y-4,8,8};
-    SDL_RenderFillRect(renderer,&tmp);
-
-
-    cout<<"dst "<<t1->get_dst().x<<" "<<t1->get_dst().y<<"player pos "<<p1->get_pos().x<<" "<<p1->get_pos().y<<endl;
+    present = time(0);
+    // min = prev_min + localtime(&present)->tm_min - localtime(&intiale)->tm_min;
+    sec = prev_sec + (localtime(&present)->tm_hour - localtime(&intiale)->tm_hour)*3600 + (localtime(&present)->tm_min - localtime(&intiale)->tm_min)*60 + localtime(&present)->tm_sec - localtime(&intiale)->tm_sec;
+    draw_game();
 
     if(t1->has_reached()){
-        cout<<"t1\n";
         t1->task_completed();
         t1->add_new_task();
     }
 
-    cout<<"dst "<<t2->get_dst().x<<" "<<t2->get_dst().y<<"player pos "<<p2->get_pos().x<<" "<<p2->get_pos().y<<endl;
     if(t2->has_reached()){
-        cout<<"t2\n";
         t2->task_completed();
         t2->add_new_task();
     }
 
+    if(inputs->get_press(input_keys::space,player_type::p1) || inputs->get_press(input_keys::space,player_type::p2)){
+        // prev_min = min;
+        prev_sec = sec;
+        _state = game_state::pause;
+    }
 
-
+    if(sec >= 120){
+        _state = game_state::gameover;
+    }
 
 }
 
 void Game::game_pause(){
-    cout<<"game pause"<<endl;
+
+    draw_game();
+    Point p = {300,300};
+    text(" Paused ",font_size::x96,p,RGB{0xFF,0xFF,0xFF});
+
+    if(inputs->get_press(input_keys::space,player_type::p1) ||inputs->get_press(input_keys::space,player_type::p2)){
+        intiale = time(0);
+        _state = game_state::play;
+    }
+
+
 }
 
 void Game::game_over(){
