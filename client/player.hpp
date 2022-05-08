@@ -38,21 +38,6 @@ namespace player_type{
     };
 }
 
-int* get2rand(){
-    int curr1 = rand()%player_hostels::count;
-    int curr2 = rand()%player_hostels::count;
-
-    while(curr1==curr2){
-        cout<<curr2<<" "<<curr1<<endl; 
-        curr2 = rand()%player_hostels::count;
-    }
-
-    int randarr[2];
-    randarr[player_type::p1] = curr1;
-    randarr[player_type::p2] = curr2;
-
-    return randarr;
-}
 
 class Player{
     Point pos;
@@ -168,6 +153,10 @@ class Player{
             draw(renderer);
 
         }
+
+    inline void set_pos(const Point &p){pos = p; /*curr_ = {p.x/block::size, p.y/block::size}; nxt_ = curr_;*/}
+    // inline void set_curr(const Point &p) { pos = {p.x * block::size, p.y*block::size}; curr_ = p; nxt_ = p;}
+
 
         Point get_pos() {return pos;}
         int get_type(){return type;}

@@ -3,8 +3,6 @@
 #define ENET_IMPLEMENTATION
 #include "game.hpp"
 #include "enet.h"
-
-
 using namespace std;
 
 int main(){

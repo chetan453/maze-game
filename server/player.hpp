@@ -169,6 +169,8 @@ class Player{
 
         }
 
+        inline void set_pos(const Point &p){pos = p; /*curr_ = {p.x/block::size, p.y/block::size}; nxt_ = curr_;*/}
+
         Point get_pos() {return pos;}
         int get_type(){return type;}
 };

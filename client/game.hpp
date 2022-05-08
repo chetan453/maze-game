@@ -59,9 +59,9 @@ class Game{
     int prev_sec;
     bool testf;
     ENetAddress address;
-    ENetHost* server;
+    ENetHost* client;
     ENetEvent event;
-    ENetPeer* peer1;
+    ENetPeer* peer;
     bool init();
 
     void draw_game();
@@ -112,20 +112,40 @@ class Game{
         Game():
             gWindow(NULL),
             renderer(NULL),
-            _state(game_state::start),
+            _state(game_state::title),
             selected(0),
             game_mode(0)
         {
             init();
-            address = {0};
-            address.host = ENET_HOST_ANY; /* Bind the server to the default localhost.     */
-            address.port = 8123; /* Bind the server to port 7777. */
-            server = enet_host_create(&address, 3, 2, 0, 0);
-            if (server == NULL) {
+            // address = {0};
+            // address.host = ENET_HOST_ANY; /* Bind the server to the default localhost.     */
+            // address.port = 8123; /* Bind the server to port 7777. */
+            client = enet_host_create(NULL, 1, 2, 0, 0);
+            if (client == NULL) {
                 printf("An error occurred while trying to create an ENet server host.\n");
                 //return 1;
             }
-            printf("Started a server...\n");
+            address = {0};
+            enet_address_set_host(&address, "127.0.0.1");
+            address.port = 8123; /* Bind the server to port 7777. */
+            peer = enet_host_connect(client, &address, 2, 0);
+            if (peer == NULL) {
+                fprintf(stderr,
+                "No available peers for initiating an ENet connection.\n");
+                exit(EXIT_FAILURE);
+            }
+            testf=true;
+            if (enet_host_service(client, &event, 5000) > 0 &&
+                event.type == ENET_EVENT_TYPE_CONNECT) {
+                puts("Connection to some.server.net:1234 succeeded.");
+            } else {
+                /* Either the 5 seconds are up or a disconnect event was */
+                /* received. Reset the peer in the event the 5 seconds   */
+                /* had run out without any significant event.            */
+                enet_peer_reset(peer);
+                puts("Connection to some.server.net:1234 failed.");
+            }
+
             min = 0;
             sec = 0;
             prev_min = 0;
@@ -163,7 +183,7 @@ class Game{
 
         inline void decode(ENetPacket* packet){
             if(packet->data[0]=='P'){
-            // p2->set_pos((Point) {byteToInt(&packet->data[1]), byteToInt(&packet->data[5])}) ;
+            p1->set_pos((Point) {byteToInt(&packet->data[1]), byteToInt(&packet->data[5])});
             // if(packet->data[9]=='1'){
             //     if(p2->power_up>0){
             //         Mix_PlayChannel(se_type::siren, sound_manager_->get_se(se_type::siren),0);
@@ -184,15 +204,15 @@ class Game{
         void play(){
             while(true){
                 inputs->update();
-                while (enet_host_service(server, &event, 0) > 0) {
+                while (enet_host_service(client, &event, 0) > 0) {
                     switch (event.type) {
-                        case ENET_EVENT_TYPE_CONNECT:
-                            printf("A new client connected from %x:%u.\n",  event.peer->address.host, event.peer->address.port);
-                            /* Store any relevant client information here. */
-                            //event.peer->data = "Client information";
-                            peer1 = event.peer;
-                            testf = true;
-                            break;
+                        // case ENET_EVENT_TYPE_CONNECT:
+                        //     printf("A new client connected from %x:%u.\n",  event.peer->address.host, event.peer->address.port);
+                        //     /* Store any relevant client information here. */
+                        //     //event.peer->data = "Client information";
+                        //     peer1 = event.peer;
+                        //     testf = true;
+                        //     break;
 
                         case ENET_EVENT_TYPE_RECEIVE:
                             // //printf("A packet of length %lu containing %s was received from %s on channel %u.\n",
@@ -211,11 +231,11 @@ class Game{
                             event.peer->data = NULL;
                             break;
 
-                        case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
-                            printf("%s disconnected due to timeout.\n", event.peer->data);
-                            /* Reset the peer's client information. */
-                            event.peer->data = NULL;
-                            break;
+                        // case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
+                        //     printf("%s disconnected due to timeout.\n", event.peer->data);
+                        //     /* Reset the peer's client information. */
+                        //     event.peer->data = NULL;
+                        //     break;
 
                         case ENET_EVENT_TYPE_NONE:
                             break;
@@ -223,6 +243,7 @@ class Game{
                 }
 
                 if(!exit_from_game()){
+                    enet_host_destroy(client);
                     break;
                 }
 
@@ -299,8 +320,21 @@ void Game::draw_game(){
     p1->draw(renderer);
     p2->draw(renderer);
 
-    p1->move(renderer,peer1,testf);
-    p2->move(renderer,peer1,testf);
+    p1->move(renderer,peer,testf);
+    p2->move(renderer,peer,testf);
+
+    Point kp = {150,10};
+    text("Kumoaon",font_size::x32,kp,RGB{0x99,0x00,0x4C});
+    kp = {370,10};
+    text("Girnar",font_size::x32,kp,RGB{0x99,0x00,0x4C});
+    kp = {10,10};
+    text("Jwala",font_size::x32,kp,RGB{0x99,0x00,0x4C});
+    kp = {10,400};
+    text("Nilgiri",font_size::x32,kp,RGB{0x99,0x00,0x4C});
+    kp = {760,10};
+    text("Academic Area",font_size::x32,kp,RGB{0x99,0x00,0x4C});
+    kp = {1000,440};
+    text("LHC",font_size::x32,kp,RGB{0x99,0x00,0x4C});
 
     Point p1_pos = {1185,5};
     Point p1_task_pos = {1186,17};
@@ -349,7 +383,7 @@ bool Game::init(){
         cout<<"cannot initialiaze sdl "<<SDL_GetError()<<endl;
         success = false;
     }else{
-        gWindow = SDL_CreateWindow("IIT Delhi World",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,screen::width,screen::height,SDL_WINDOW_SHOWN);
+        gWindow = SDL_CreateWindow("Client",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,screen::width,screen::height,SDL_WINDOW_SHOWN);
         if(gWindow == NULL){
             cout<<"cannot initialize window "<<SDL_GetError()<<endl;
             success = false;
@@ -403,12 +437,12 @@ void Game::game_title(){
 
     switch(game_mode){
         case 0:{
-            string title_text = "IIT Delhi World";
+            string title_text = "Life at IITD";
             text(title_text,font_size::x96,title_pos,RGB{0x11,0x7A,0x65});
             switch(selected){
                 case 0:{
                     SDL_SetRenderDrawColor(renderer,0xE8,0xF8,0xF5,0x00);
-                    SDL_Rect tmp = {290,280,430,80};
+                    SDL_Rect tmp = {290,270,430,80};
                     SDL_RenderFillRect(renderer,&tmp);
                     text("START",font_size::x48,start_pos,RGB{0x22,0x99,0x54});
                     text("INSTRUCTIONS",font_size::x48,ins_pos,RGB{0x22,0x99,0x54});
@@ -419,7 +453,7 @@ void Game::game_title(){
                 }
                 case 1:{
                     SDL_SetRenderDrawColor(renderer,0xE8,0xF8,0xF5,0x00);
-                    SDL_Rect tmp = {290,380,430,80};
+                    SDL_Rect tmp = {290,370,430,80};
                     SDL_RenderFillRect(renderer,&tmp);
                     text("START",font_size::x48,start_pos,RGB{0x22,0x99,0x54});
                     text("INSTRUCTIONS",font_size::x48,ins_pos,RGB{0x22,0x99,0x54});
@@ -448,6 +482,20 @@ void Game::game_title(){
 
         case 3:{
             //to get instructions
+            Point kp = {300,120};
+            text("Instructions",font_size::x96,kp,RGB{0x22,0x99,0x54});
+            kp = {100,250};
+            text("use W A S D to move Player1",font_size::x48,kp,RGB{0x04,0x0C,0x29});
+            kp = {100,300};
+            text("use Up Down Left Right to move Player2",font_size::x48,kp,RGB{0x04,0x0C,0x29});
+            kp = {100,350};
+            text("Complete the task",font_size::x48,kp,RGB{0x04,0x0C,0x29});
+            kp = {100,400};
+            text("player who has done most task will win the game",font_size::x48,kp,RGB{0x04,0x0C,0x29});
+            kp = {100,600};
+            text("Press F to go back",font_size::x48,kp,RGB{0x29,0x0D,0x04});
+            if(inputs->get_edge(input_keys::f,0 ) || inputs->get_edge(input_keys::f,1) )
+                game_mode = 0;
             break;
         }
         default: break;
@@ -519,9 +567,9 @@ void Game::game_play(){
         t2->add_new_task();
     }
 
-    if(inputs->get_press(input_keys::space,player_type::p1) || inputs->get_press(input_keys::space,player_type::p2)){
-        // prev_min = min;
-        prev_sec = sec;
+    if (inputs->get_edge(input_keys::space,player_type::p1)) {
+        if(testf){ENetPacket * packet = enet_packet_create ("B", strlen ("B") + 1 ,ENET_PACKET_FLAG_RELIABLE);
+        enet_peer_send (peer, 0, packet);}
         _state = game_state::pause;
     }
 
@@ -537,14 +585,26 @@ void Game::game_pause(){
     Point p = {300,300};
     text(" Paused ",font_size::x96,p,RGB{0xFF,0xFF,0xFF});
 
-    if(inputs->get_press(input_keys::space,player_type::p1) ||inputs->get_press(input_keys::space,player_type::p2)){
-        intiale = time(0);
-        _state = game_state::play;
+    if (inputs->get_edge(input_keys::space,player_type::p1)) {
+      ENetPacket * packet = enet_packet_create ("N", strlen ("N") + 1 ,ENET_PACKET_FLAG_RELIABLE);
+      enet_peer_send (peer, 0, packet);
+      _state = game_state::play;
     }
 
 
 }
 
 void Game::game_over(){
-    cout<<"game over"<<endl;
+    SDL_SetRenderDrawColor(renderer,0xB2,0xBA,0xBB,0xFF);
+    SDL_RenderClear(renderer);
+    Point game_pos = {120,100};
+    text("Game over",font_size::x96,game_pos,RGB{0x11,0x7A,0x65});
+    Point result_pos = {320,300};
+    if(t1->completed_size() == t2->completed_size()){
+        text("Tied!!",font_size::x48,result_pos,RGB{0xCF,0xDB,0x16});
+    }else if(t1->completed_size()>t2->completed_size()){
+        text("Player1 wins!!",font_size::x48,result_pos,RGB{0xCF,0xDB,0x16});
+    }else{
+        text("Player2 wins!!",font_size::x48,result_pos,RGB{0xCF,0xDB,0x16});
+    }
 }

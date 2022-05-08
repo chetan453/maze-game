@@ -67,7 +67,9 @@ class Task{
         }
 
         bool has_reached(){
-            return p->get_pos() == to_do.front().p;
+            bool ans = true;
+            ans = ans && (abs(p->get_pos().x-to_do.front().p.x) <= 4 && abs(p->get_pos().y-to_do.front().p.y) <= 4 ) ;
+            return ans;
         }
 
         string get_task_text(){return to_do.front().task_text;}
